@@ -1,6 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component } from '@angular/core';
-import * as L from 'leaflet';
+import { Component, ViewChild } from '@angular/core';
 import { Control, Map, TileLayer, GeoJSON as GeoJson, DomUtil } from 'leaflet';
 import { GeoJSON } from 'geojson';
 
@@ -13,7 +12,15 @@ export class AppComponent {
     title = 'geostrat';
     statesData: GeoJSON = {} as GeoJSON;
 
+    @ViewChild('info') info: HTMLDivElement | null = null;
+
+    @ViewChild('legend') legend: HTMLDivElement | null = null;
+
     constructor(private http: HttpClient) {}
+
+    ngAfterViewInit(): void {
+        console.log('info', this.info);
+    }
 
     ngOnInit(): void {
         const map = new Map('map').setView([37.8, -96], 4);
@@ -28,10 +35,11 @@ export class AppComponent {
         ).addTo(map);
 
         this.http
-            .get<GeoJSON>('assets/us-states.json')
+            .get<GeoJSON>('assets/countries.json')
             .subscribe((statesData: GeoJSON) => {
                 this.statesData = statesData;
                 new GeoJson(this.statesData).addTo(map);
+
                 const getColor = (d: number) => {
                     return d > 1000
                         ? '#800026'
@@ -65,7 +73,7 @@ export class AppComponent {
 
                 const info: Control | any = new Control();
 
-                const highlightFeature = (e: { target: any }) => {
+                const highlightFeature = (e: any) => {
                     var layer = e.target;
 
                     layer.setStyle({
@@ -84,54 +92,49 @@ export class AppComponent {
                     info.update();
                 };
 
-                const zoomToFeature = (e: {
-                    target: { getBounds: () => L.LatLngBoundsExpression };
-                }) => {
+                const zoomToFeature = (e: any) => {
+                    // console.log(e);
+                    // e.target.feature.properties.population = 100;
                     map.fitBounds(e.target.getBounds());
                 };
 
-                var geojson: L.GeoJSON<any>;
+                var geojson: GeoJson;
 
-                const onEachFeature = (
-                    feature: any,
-                    layer: {
-                        on: (arg0: {
-                            mouseover: { (e: any): void; (e: any): void };
-                            mouseout: { (e: any): void; (e: any): void };
-                            click: (e: any) => void;
-                        }) => void;
-                    }
-                ) => {
+                const onEachFeature = (feature: any, layer: any) => {
+                    // console.log('feature', feature);
+                    // console.log('layer', layer);
                     layer.on({
-                        mouseover: (e) => highlightFeature(e),
-                        mouseout: (e) => resetHighlight(e),
-                        click: (e) => zoomToFeature(e),
+                        mouseover: (e: any) => highlightFeature(e),
+                        mouseout: (e: any) => resetHighlight(e),
+                        click: (e: any) => zoomToFeature(e),
                     });
+
+                    feature.properties.population = Math.floor(
+                        Math.random() * (1000000000 - 1 + 1) + 1
+                    ).toLocaleString('en-US');
                 };
 
-                geojson = L.geoJson(this.statesData, {
+                geojson = new GeoJson(this.statesData, {
                     style: style,
                     onEachFeature: onEachFeature,
                 }).addTo(map);
 
                 info.onAdd = function (map: any) {
                     this._div = DomUtil.create('div', 'info'); // create a div with a class "info"
+                    console.log('div', this.info);
                     this.update();
                     return this._div;
                 };
 
                 // method that we will use to update the control based on feature properties passed
-                info.update = function (props: {
-                    name: string;
-                    density: string;
-                }) {
+                info.update = function (props: any) {
                     this._div.innerHTML =
                         '<h4>US Population Density</h4>' +
                         (props
                             ? '<b>' +
-                              props.name +
+                              props.population +
                               '</b><br />' +
-                              props.density +
+                              props.ADMIN +
                               ' people / mi<sup>2</sup>'
                             : 'Hover over a state');
                 };
